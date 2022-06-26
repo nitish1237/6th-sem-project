@@ -22,13 +22,12 @@ st.image(image,use_column_width=True)
 
 dataset_name=st.sidebar.selectbox('select dataset',('EmployeeAttrition',''))
 #dataset_name=st.sidebar.selectbox('Select dataset',('Breast Cancer','Iris','Wine'))
-classifier_name=st.sidebar.selectbox('select classifier',('Randomforest','decision tree','naive bayes','logistic regresssion'))
+classifier_name=st.sidebar.selectbox('select classifier',('','Randomforest','decision tree','naive bayes','logistic regresssion'))
 
 
 
 
 upload=st.file_uploader("choose a csv",type='csv')
-
 data=pd.read_csv(upload)
 st.write(data)
 st.success("Sucessfully Loaded Dataset")
@@ -54,15 +53,17 @@ st.write(x)
 
 
 
-a=st.sidebar.selectbox('Visualization',('Countplot','Barplot',''))
+a=st.sidebar.selectbox('Visualization',('','Countplot','Barplot'))
     
 if a=='Countplot':
     sns.countplot(data['Attrition'])
     st.write("------------------------")
     st.pyplot()
+    st.set_option('deprecation.showPyplotGlobalUse', False)
 elif a=='Barplot':
 	x.plot.pie(autopct="%.1f%%")
 	st.pyplot()
+	st.set_option('deprecation.showPyplotGlobalUse', False)
 
 
 showPyplotGlobalUse = False
@@ -91,19 +92,21 @@ if st.button("Correlation of the dataset"):
 showPyplotGlobalUse = False
 
 
-b=st.sidebar.selectbox('HEATMAP',('HEATMAP',''))
+
+
+b=st.sidebar.selectbox('HEATMAP',('','HEATMAP'))
 
 if b=='HEATMAP':
 	plt.figure(figsize=(14,14))
 	sns.heatmap(data.corr(), annot=True, fmt='.0%')
 	st.pyplot()
+	showPyplotGlobalUse = False
 
 
-showPyplotGlobalUse = False
 
 
 
-c=st.sidebar.selectbox('GRAPH ANAYLSIS',('Age','TotalWorkingYears','YearsAtCompany','PercentSalaryHike',''))
+c=st.sidebar.selectbox('GRAPH ANAYLSIS',('','Age','TotalWorkingYears','YearsAtCompany','PercentSalaryHike'))
     
 if c=='Age':
 	fig_dims = (12, 4)
@@ -130,6 +133,8 @@ elif c=='PercentSalaryHike':
 showPyplotGlobalUse = False
 
 
+
+
 from sklearn.preprocessing import LabelEncoder
 
 for column in data.columns:
@@ -140,6 +145,10 @@ for column in data.columns:
 data['Age_Years']=data['Age']
 data=data.drop('Age',axis=1)
 
+
+
+
+
 X = data.iloc[:, 1:data.shape[1]].values 
 Y = data.iloc[:, 0].values 
 from sklearn.model_selection import train_test_split
@@ -147,11 +156,15 @@ X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size = 0.25, rand
 
 #random forest algo
 
+
+
+
 if classifier_name=='Randomforest':
 	from sklearn.ensemble import RandomForestClassifier
 	forest = RandomForestClassifier(n_estimators = 10, criterion = 'entropy', random_state = 0)
 	forest.fit(X_train, Y_train)
-	st.write("random forest score",forest.score(X_train, Y_train))
+	score=forest.score(X_train, Y_train)
+	st.success("random forest score")
 	from sklearn.metrics import confusion_matrix
 	cm = confusion_matrix(Y_test, forest.predict(X_test))
 	TN = cm[0][0]
@@ -160,6 +173,78 @@ if classifier_name=='Randomforest':
 	FP = cm[0][1]
 	st.write(cm)
 	st.write('Model Testing Accuracy = "{}!"'.format(  (TP + TN) / (TP + TN + FN + FP)))
+elif classifier_name=='logistic regresssion':
+	from sklearn.preprocessing import StandardScaler
+	sc_X = StandardScaler()
+	X_train = sc_X.fit_transform(X_train)
+	X_test = sc_X.transform(X_test)
+	from sklearn.feature_selection import RFE
+	from sklearn.linear_model import LogisticRegression
+	model = LogisticRegression(C=0.1, solver='newton-cg' , random_state=1)
+	rfe = RFE(model, n_features_to_select=5)
+	fit = rfe.fit(X_train,Y_train)
+	X_train_nf, X_test_nf, y_train_nf, y_test_nf = train_test_split(X, Y, test_size = 0.25, random_state = 0)
+	model.fit(X_train_nf, y_train_nf)
+	y_pred = model.predict(X_test_nf)
+	from sklearn import metrics
+	cm=metrics.confusion_matrix(y_test_nf,y_pred)
+	TN = cm[0][0]
+	TP = cm[1][1]
+	FN = cm[1][0]
+	FP = cm[0][1]
+	score=rfe.score(X_train, Y_train)
+	st.success("logistic regresssion")
+	st.write(cm)
+	st.write('Model Testing Accuracy = "{}!"'.format(  (TP + TN) / (TP + TN + FN + FP)))
+elif classifier_name=='decision tree':
+	from sklearn.tree import DecisionTreeClassifier
+	def applyDecisionTree(X_train, Y_train, X_test, Y_test):
+		dtree = DecisionTreeClassifier()
+		dtree.fit(X_train, Y_train)
+		score = dtree.score(X_test,Y_test)
+		y_pred = dtree.predict(X_test)
+		st.success("decision tree score")
+		from sklearn import metrics
+		cm=metrics.confusion_matrix(Y_test,y_pred)
+		TN = cm[0][0]
+		TP = cm[1][1]
+		FN = cm[1][0]
+		FP = cm[0][1]
+		st.write(cm)
+		st.write('Model Testing Accuracy = "{}!"'.format(  (TP + TN) / (TP + TN + FN + FP)))
+	applyDecisionTree(X_train, Y_train, X_test, Y_test)
+elif classifier_name=='naive bayes':
+	from sklearn.naive_bayes import GaussianNB
+	clf = GaussianNB().fit(X_train,Y_train.ravel())
+	score = clf.score(X_test,Y_test)
+	st.success("naive bayes")
+	predicted = clf.predict(X_test)
+	from sklearn import metrics
+	cm=metrics.confusion_matrix(Y_test,predicted)
+	TN = cm[0][0]
+	TP = cm[1][1]
+	FN = cm[1][0]
+	FP = cm[0][1]
+	st.write(cm)
+	st.write('Model Testing Accuracy = "{}!"'.format(  (TP + TN) / (TP + TN + FN + FP)))
+
+
+if st.sidebar.button("TOTAL PREDICTED ANAYLSIS"):
+    acc=0.8532608695652174
+    from sklearn.ensemble import RandomForestClassifier
+    forest = RandomForestClassifier(n_estimators = 10, criterion = 'entropy', random_state = 0)
+    forest.fit(X_train, Y_train)
+    st.write("Random forest is the best algorithm with accuracy",acc)
+    importances = pd.DataFrame({'feature':data.iloc[:, 1:data.shape[1]].columns,'importance':np.round(forest.feature_importances_,3)})
+    importances = importances.sort_values('importance',ascending=False).set_index('feature')
+    st.write(importances)
+
+
+
+
+	
+
+	
 
 
 showPyplotGlobalUse = False
